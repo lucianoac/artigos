@@ -11,6 +11,53 @@ Programadores funcionais argumentam que há grandes benefícios materiais - que 
 
 Mesmo um programador funcional deve ficar insatisfeito com essas assim chamadas qualidades, porque elas não vão lhe ajudar a explorar o poder das linguagens funcionais. Não se pode escrever um programa que é essencialmente carente de atribuição, declarações ou particularmente referencialmente transparente. Não há critério de qualidade de programa aqui e, portanto, nenhum ideal para direcionar.
 
-É evidente que esta caracterização de programação funcional é inadequadta. Nós devemos encontrar algo para colocar em seu lugar - algo que não só explica a poder da programação funcional, mas também dê uma indicação clara de que o programador funcional deve almejar.
+É evidente que esta caracterização de programação funcional é inadequada. Nós devemos encontrar algo para colocar em seu lugar - algo que não só explica a poder da programação funcional, mas também dê uma indicação clara de que o programador funcional deve almejar.
 
 
+2. Uma analogia com a programação estruturada
+
+É útil fazer uma analogia entre programação funcional e estruturada. No passado as características e vantagens da programação estruturada foram sumarizadas mais ou menos como segue. Programas estruturados não contem declarações goto. Blocos em um programa estruturado não têm entradas e saídas múltiplas. Programas estruturados são mais tratáveis matematicamente que suas contrapartes não estruturadas. Essas "vantagens" da programação são muito similares em espírito com as "vantagens" da programação funcional que discutimos anteriormente. Elas são essencialmente declarações negativas e levaram a muita discussão infrutífera sobre "gotos essenciais" e assim por diante.
+
+Com o benefício da retrospectiva é claro que estas propriedades dos programas estruturados, embora úteis, não vão ao cerne da questão. A diferença mais importante entre programas estruturados e não estruturados é que programas estruturados são concebidos de maneira modular. Um design modular traz consigo grandes ganhos de produtividade. Primeiramente, pequenos módulos podem ser codificados rapidamente e facilmente. Em segundo lugar, módulos de uso geral podem ser reutilizados, levando a um desenvolvimento mais rápido dos próximos programas. Em terceiro lugar, módulos de um programa podem ser testados de maneira independente, ajudando a reduzir o tempo gasto na depuração.
+
+A ausência de gotos, e assim por diate, tem pouco a ver com isso. Apenas auxilia em "programas pequenos", enquanto que um design modular ajuda em "programas grandes". Assim pode-se aproveitar os benefícios da programação estruturada em FORTRAN ou assembly, mesmo como um pouco mais de trabalho.
+
+É comumente aceito que o design modular é a chave para um desenvolvimento de sucesso. Linguagens como Modula-II [Wir82], Ada [oD80] e Standard ML [MTH90] incluem características especialmente designadas para ajudar a aperfeiçoar a modularidade. Entretanto, existe um importante ponto frequentemente esquecido. Quando escreve-se um programa modular para resolver um problema, divide-se o problema em sub-problemas então a resolvem-se os sub-problemas e combinam-se as soluções. As formas de divisão do problema inicial dependem diretamente das maneiras como podem-se colar as soluções. Então, para aumentar a capacidade de, conceitualmente, modulalizar um problema, deve-se prover novos tipos de cola em uma linguagem de programação. Complicadas regras de escopo e provisão para compilação separada ajuda somente com detalhes formais, elas não oferencem  novas ferramentas conceituais para decompor problemas.
+
+Pode-se admirar a importancia da cola através de uma analogia com a carpintaria. Uma cadeira pode ser fabricada facilmente com a construção das partes: assento, pernas, encosto, etc, e fixando-os juntos da maneira certa. Mas isso depende de uma habilidade de construir juntas e cola de madeira. Na falta dessa habilidade, a única maneira de fabricar uma cadeira é esculpindo-a em um pedaço a partir de um bloco de madeira, uma tarefa muito mais difícil. Esse exemplo demonstra o grande poder da modularização e a importância de se ter a cola certa.
+
+Agora vamos retornar a programação funcional. Vamos discutir no restante deste artigo que linguagens funcionais fornecem dois novos e importantes tipos de cola. Vamos dar muitos exemplos de programas que podem ser modularizados de novas formas e amplamente simplificados. Essa é a chave do poder da programação funcional: ela proporciona uma modularização aperfeiçoada. Também é o objetivo para o qual os programadores devem focar - modulos menores e mais simples, colados em conjunto com as novas colas que vamos descrever.
+
+3. Colando funções em conjunto
+
+A primeira de dois novos tipos de cola possibilita que funções simples sejam combinadas para a criação de funções mais complexas. Isso pode ser ilustrado com um problema simples de processamento de listas: adicionar elementos à lista. Definimos listas como
+
+listof X ::= nil | cons X (listof X)
+
+que quer dizer que uma lista de X (qualquer que seja X) é ou nula, representando uma lista sem elementos, ou é uma função cons de um X mais outra lista de X. Uma função cons representa uma lista onde o primeiro elemento é X e o segundo, bem como os subsequentes, são elementos em outra lista de X. Aqui, X pode ser substituido por qualquer tipo. Por exemplo, se X é inteiro então a definição diz que uma lista de inteiros é uma lista vazia ou uma cons de um inteiro e outra lista de inteiros. Seguindo a prática comum, nós vamos escrever listas simplesmente envolvendo seus elementos em colchetes, ao invés de escrever cons e nulos explicitamente. É simplesmente um atalho para a conveniência da notação. Por exemplo:
+
+[] 		means 	nil
+[1] 	means 	cons 1 nil
+[1,2,3] means 	cons 1 (cons 2 (cons 3 nil))
+
+Os elemtnos de uma lista podem ser adicionados por uma função recursiva sum. Sum deve ser definida para dois tipos de argumento: uma lista vazia (nula), e um cons. Sendo que a soma de nenhum número é zero, definimos
+
+sum nil = 0
+
+e sendo que a soma de uma cons pode ser calculada pela adição do primeiro elemento da lista com a soma dos demais, definimos
+
+sum (cons num list) = num + sum list
+
+Examinando essa definição, vemos que somente as partes isoladas abaixo são específicas para o cálculo da soma
+
+          +---+
+sum nil = | 0 |
+          +---+
+
+                          +---+
+sum (cons num list) = num | + | sum list
+                          +---+
+
+Isso significa que a computação de uma soma pode ser modularizada juntando-se um padrão recursivo e partes isoladas. Esse padrão recursivo é normalmente chamado de reduce então a função sum pode ser descrita como
+
+sum = reduce add 0
