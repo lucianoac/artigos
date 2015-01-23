@@ -61,3 +61,41 @@ sum (cons num list) = num | + | sum list
 Isso significa que a computação de uma soma pode ser modularizada juntando-se um padrão recursivo e partes isoladas. Esse padrão recursivo é normalmente chamado de reduce então a função sum pode ser descrita como
 
 sum = reduce add 0
+
+onde, por conveniência, reduce é recebe uma função com dois argumentos add ao invés de um operador. Add é simplesmente definida por
+
+add x y = x + y
+
+A definição de reduce pode ser derivada pela parametrização de sum, gerando
+
+(reduce f x) nil = x
+(reduce f x) (cons a l) = f a((reduce fx) l)
+
+Aqui escrevemos parênteses isolando (reduce f x) para deixar claro que ela substitui sum. Normalmente os parênteses são omitidos, então ((reduce f x) l) é escrito como (reduce f x l). Uma funçãi de 3 argumentos como reduce, aplicada a somente 2 é tida como sendo uma função de um argumento remanescente e, em geral, uma função de n argumentos aplicada a somente m (< n) é tida como sendo uma função de n - m argumentos remanescentes. Seguiremos essa convenção no futuro.
+Tendo modularisado sum desta maneira, podemos colher benefícios reutilizando as partes. A parte mais interessante é reduce, que pode ser utilizada para escrever uma função para multiplicar os elementos de uma lista sem exigir mais código:
+
+product = reduce multiply 1
+
+Também pode ser usada para testar algum elemento de uma lista de booleanos é true
+
+anytrue = reduce or false
+
+ou se são todos true
+
+alltrue = reduce and true
+
+Uma maneira para entender (reduce f a) é como uma função que substitui todas a ocorrencias de cons em uma lista por f, e todas as ocorrências de nil por a. Pegando a lista [1,2,3] como exemplo, uma vez que isso significa
+
+cons 1 (cons 2 (cons 3 nil))
+
+então (reduce add 0) a converte em
+
+add 1 (add 2 (add 3 0)) = 6
+
+e (reduce multiply 1) a converte em
+
+multiply 1 (multiply 2 (multiply 3 1)) = 6
+
+Agora é óbvio que (reduce cons nil) apenas copia uma lista. Uma vez que uma lisat pode ser anexada em outro aplicando cons na frente, nós temos
+
+append a b = reduce cons b a
