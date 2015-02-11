@@ -99,3 +99,51 @@ multiply 1 (multiply 2 (multiply 3 1)) = 6
 Agora é óbvio que (reduce cons nil) apenas copia uma lista. Uma vez que uma lisat pode ser anexada em outro aplicando cons na frente, nós temos
 
 append a b = reduce cons b a
+
+Como um exemplo
+
+append [1,2] [3,4] = reduce cons [3,4] [1,2]
+					= (reduce cons [3,4]) (cons 1 (cons 2 nil))
+					= cons 1 (cons 2 [3,4]))
+						(replacing cons by cons and nil by [3,4])
+					= [1,2,3,4]
+
+Uma função para dobrar todos elementos da lista pode ser escrita como
+
+	doubleall = reduce doubleandcons nil
+		where doubleandcons num list = cons (2*num) list
+
+Doubleandcons pode ser modularizada ainda mais, primeiro em
+	
+	doubleandcons = fandcons double
+	where double n = 2*n
+	fandcons f el list = cons (f el) list
+
+e então como 
+
+	fandcons f = cons . f
+
+onde "." (compisição de funções, um operador padrão) é definido por
+
+	(f . g) h = f (g h)
+
+Nós podemos ver que a nova definição de fandcons é correta aplicando alguns argumentos:
+
+	fandcons f el = (cons . f) el
+	= cons (f el)
+	so fandcons f el list = cons (f el) list
+
+A versão final é
+
+	doubleall = reduce (cons . double) nil
+
+Com mais uma modularização nós chegamos a
+
+	doubleall = map double
+	map f = reduce (cons . f) nil
+
+
+onde map aplica uma função f qualquer a todos os elementos da lista. Map é outra função geralmente útil.
+Nós podemos ainda escrever uma função para somar todos os elementos de uma matriz, representada por uma lista de listas. Isto é
+
+	summatrix = sum . map sum
