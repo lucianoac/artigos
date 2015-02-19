@@ -147,3 +147,75 @@ onde map aplica uma função f qualquer a todos os elementos da lista. Map é ou
 Nós podemos ainda escrever uma função para somar todos os elementos de uma matriz, representada por uma lista de listas. Isto é
 
 	summatrix = sum . map sum
+
+A função map sum usa sum para somar todas as linhas e então a função sum mais a esquerda soma todos os totais das linha para obter a soma de toda a matriz.
+Esses exemplos devem ser suficientes para convencer o leitor que uma pequena modularização pode ir longe. Modularizando uma simples função (sum) como a combinação de uma "função de maior ordem" e alguns argumentos simples nós chegamos na em uma porção (reduce) que pode ser usada para escrever muitas outras funções aplicáveis a listas sem a necessidade de esforço em programação. Nós não precisamos parar em funções aplicáveis em listas. Como um outro exemplo considere uma estrutura de dados de árvore rotulada ordenada, definida por:
+
+treeof X ::= node X (listof (treeof X))
+
+Essa definição diz que uma árvore (tree) de Xs é um nó com um rótulo que é um X e uma lista de sub-árvores que podem também sem árvores de Xs. Por exemplo, a árvore
+
+	    1 o
+	     / \
+	    /   \
+	   /     \
+	2 o       o 3
+	          |
+	          |
+	          |
+	          o 4
+
+seria representada por
+
+	node 1
+		(cons (node 2 nil)
+			(cons (node 3
+						(cons (node 4 nil) nil))
+					nil))
+
+Ao invés de considerar um exemplo e abstrair uma função de ordem superior dele, nós iremos diretamento para função redtree análoga a reduce. Lembre-se que reduce pega dois argumentos, alguma coisa para substuir cons, e alguma coisa para substuir nil. Uma vez que árvores são construídas usando node, cons e nil, redtree deve receber três argumentos - alguma coisa para substituir cada um desses. Dado que árvores e listas são de tipos diferentes, nós teremos que definir duas funções, cada uma para operar em cada tipo. Logo, nós definimos
+
+	redtree f g a (node label subtrees) =
+			f label (redtree’ f g a subtrees)
+	redtree’ f g a (cons subtree rest) =
+			g (redtree f g a subtree) (redtree’ f g a rest)
+	redtree’ f g a nil = a
+
+Muitas funções interessantes podem ser definidas pela união de redtree junto a outras. Por exemplo, todos os rótulos em uma árvore de números podem ser somados usando
+
+	sumtree = redtree add add 0
+
+Tomando a árvore que escrevemos anteriormente como exemplo, sumtree gera
+
+	add 1
+		(add (add 2 0)
+			(add (add 3
+				(add (add 4 0) 0))
+			0))
+	= 10
+
+Uma lista como todos os rótulos em uma árvore pode ser computada usando
+
+	labels = redtree cons append nil
+
+O mesmo exemplo origina
+
+	cons 1
+		(append (cons 2 nil)
+			(append (cons 3
+						(append (cons 4 nil) nil))
+					nil))
+	= [1,2,3,4]
+
+Finalmente pode-se definir uma função análoga à map que aplica uma função f para todos os elementos em uma árvore:
+
+	maptree f = redtree (node . f) cons nil
+
+
+Tudo isso pode ser conquistado porque linguagens funcionais proporcionam funções que são indivisíveis em linguagens de programação convencionais sejam expressas como uma combinação de partes - uma função de ordem superior algumas funções especializadas. Uma vez definida, essa função de ordem superior permite que várias operações sejam programadas facilmente. Sempre que uma nova estrutura de dados é definida uma função de ordem superior deve ser escrita para processá-la. Isso deixa a manipulação de datatype fácil, e também concentra o conhecimento sobre os detalhes de sua representação. A melhor analogia com programação convencional é com linguagens extensíveis - é como se a linguagem de programação pudesse ser estendida com novas estruturas de controle sempre que desejar.
+
+4. Colando programas juntos
+
+O novo tipo de cola que linguagens funcionais proporcionam possibilita que programas inteiros possam ser unidos. Lembre-se que um programa funcional completo é somente uma função da sua entrada até a sua saída. Se f e g são esses programas, então (g . f) é um programa que, quando aplicado às suas entradas, computa
+
+	g (f input)
