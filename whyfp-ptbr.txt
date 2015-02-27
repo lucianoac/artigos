@@ -219,3 +219,106 @@ Tudo isso pode ser conquistado porque linguagens funcionais proporcionam funçõ
 O novo tipo de cola que linguagens funcionais proporcionam possibilita que programas inteiros possam ser unidos. Lembre-se que um programa funcional completo é somente uma função da sua entrada até a sua saída. Se f e g são esses programas, então (g . f) é um programa que, quando aplicado às suas entradas, computa
 
 	g (f input)
+
+O programa f processa sua saída que é utilizada como entrada para o programa g. Isto poderia ser implementado de maneira convencional com a gravação da saída de f em um arquivo temporário. O problema com isto é que o arquivo temporário pode ocupar tanta memória que pode ser impraticável juntar programas desta maneira. Linguagens funcionais disponibilizam uma solução para este problema. Os dois programas f e g rodam simultaneamente em rígida sincrinização. F é inicializado somente quando g tenta ler alguma entrada e roda por tempo suficiente para entregar a saída que g necessita. Então f é suspenso e g roda até quando necessitar de outra entrada. Como um bônus, se g termina sem ler todas as saídas de f então f é encerrado. F podem até ser um programa que nunca para, produzindo uma quantidade infinita de saídas, uma vez que será necessariamente interrompido assim que g estiver terminado. Isso permite que condições de finalização sejam separadas de estruturas de repetição - uma poderosa modularização.
+Desde que este método de avaliação roda f minimamente, ele é chamado de "lazy evaluation". Isso torna mais prático para modularizar um programa como um gerador que constrói um grande número de possíveis respostas, e um selector que escolhe a apropriada. Enquanto alguns outros sistemas permitem que progrmas sejam executados juntos desta forma, somente linguagens funcionais usam lazy evaluation uniformemente para cada chamada de função, permitindo que qualquer parte de um programa possa ser modularizada assim. Lazy evaluation é, talvez, a ferramenta mais poderosa para a modularização no repertório de um programador funcional.
+
+4.1 Newton-Raphson Square Roots
+
+Nós vamos ilustrar o poder da lazy evaluation com a programação de alguns algoritmos numéricos. Primeiramente, considere o algoritmo de Newton-Raphson para encontrar raízes quadradas. Esse algoritmo calcula a raiz quadrada de um número N iniciando com uma aproximação inicial a0 e aprimorando usando a regra
+
+	a(n+1) = (a(n) + N/a(n)) / 2
+
+Se as aproximações convergem para algum limite a, então
+
+		a = (a + N/a) / 2
+	so 	2a = a + N/a
+		a = N/a
+		a*a = N
+		a = squareroot(N)
+
+De fato as aproximações convergem rapidamente para um limite. Programas de cálculo de raíz quadrada assumem uma tolerância (eps) e param quando duas aproximações sucessivas diferem por menos que eps.
+O algoritmo é programado normalmente assim:
+
+	C N IS CALLED ZN HERE SO THAT IT HAS THE RIGHT TYPE
+		X = A0
+		Y = A0 + 2.*EPS
+	C THE VALUE OF Y DOES NOT MATTER SO LONG AS ABS(X-Y).GT.EPS
+	100 IF (ABS(X-Y).LE.EPS) GOTO 200
+		Y = X
+		X = (X + ZN/X) / 2.
+		GOTO 100
+	200 CONTINUE
+	C THE SQUARE ROOT OF ZN IS NOW IN X
+
+Esse programa é indivisível em linguagens convencionais. Nós vamos expressá-lo em uma forma modularizada usando lazy evaluation, e então mostrar alguns outros usos para qual as partes podem ser aplicadas.
+Desde que o algoritmo de Newton-Raphson calcula uma sequencia de aproximações é natural representar isso explicitamente em um programa com uma lista. Cada aproximação é derivada da anterior pela função
+
+	next N x = (x + N/x) / 2
+
+então (next N) é a funcão de mapeamento de uma aproximação para a próxima. Chamando essa funcão f, a sequencia de aproximações é
+
+	[a0, f a0, f(f a0), f(f(f a0)), ..]	
+
+Podemos definir uma função para esse calculo:
+
+	repeat f a = cons a (repeat f (f a))
+
+então a lista de aproximações pode ser calculada por
+
+	repeat (next N) a0
+
+Repeat é um exemplo de funcão com uma saída infinita - mas não importa, somente as aproximações requeridas serão calculadas. O infinito é somente potencial: tudo isso significa que qualquer número de aproximações podem ser calculadas se assim for necessário, a função repeat não tem limites.
+O resto de um buscador de raíz quadrada é a função within, que assume uma tolerância e uma lista de aproximações e procura na lista por duas aproximações consecutivas que diferem não mais que a tolerância dada. Ela pode ser definida por
+
+	within eps (cons a (cons b rest)) =
+		= b, 						if abs(a-b) <= eps
+		= within eps (cons b rest), otherwise
+
+Juntando as partes,
+
+	sqrt a0 eps N = within eps (repeat (next N) a0)
+
+Agora que temos as partes de um buscador de raíz quadrada, podemos tentar combiná-los de diferentes formas. Uma modificação que poderiamos fazer é esperar pela relação entre aproximações consecutivas aproximar-se de 1, ao invés da diferença se aproximar de 0. Isso é mais apropriado para número muito pequenos (quando a diferença entre aproximações subsequentes são pequenas de imediato) e para números muito grandes (onde o erro de arredondamento pode ser muito maior que a tolerância). Somente é necessário definir um substituro para within.
+
+	relative eps (cons a (cons b rest)) =
+		= b, 						if abs(a-b) <= eps*abs b
+		= relative eps (cons b rest), otherwise
+
+Agora a nova versão de sqrt pode ser definida por 
+
+	relativesqrt a0 eps N = relative eps (repeat (next N) a0)
+
+Não é necessário reescrever a parte que gera as aproximações.
+
+4.2 Numerical Differentiation
+
+Nós reutilizamos a sequencia de aproximações para uma raíz quadrada. Evidentemente que também é possível reutilizar dentro de qualquer outro algoritmo numérico que gere sequencias de aproximações. Faremos isso em um algoritmo de derivação numérica.
+O resultado de uma função de derivação em um ponto é o declive do gráfico naquele ponto. Ele pode ser estimado facilmente pela avaliação da função em um dado ponto e um outro ponto próximo e calculando o declive de uma linha reta que liga os dois pontos. Isso pressupõe que se os dois pontos estão próximos o suficiente para que o gráfico da função não se curve muito no intervalo. Isto dá a definição
+
+	easydiff f x h = (f(x+h)-f x) / h
+
+A fim de obter uma boa aproximação o valor de h deve ser muito pequeno. Infelizmente se h for muito pequeno então os dois valoes f(x+h) e f(x) são muito próximos entre si, e assim o erro de arredondamento na subtração pode afundar o resultado. Como o valor correto de h pode ser escolhido? Uma solução para esse dilema é calcular a sequencia de aproximações com valores menores e menores de h, iniciando com um valor razoavelmente grande. Tal sequencia de convergir para o valor da derivada, mas ficaria irremediavelmente impreciso, eventualmente, devido a erro de arredondamento. Se (within eps) é usada na primeira apriximação isso é preciso o suficiente para que o risco de erro de arredondamento afetando o resultado possa ser bastante reduzido. Precisamos de uma função para calcular a sequencia:
+
+	differentiate h0 f x = map (easydiff f x) (repeat halve h0)
+	halve x = x/2
+
+Aqui h0 é o valor inicial de h e, valores são obtidos sucessivamente pela repetição de halve. Dada essa função, a derivada de qualquer ponto pode ser calculada por
+	
+	within eps (differentiate h0 f x)
+
+Mesmo essa solução não é muito satisfatória porque a sequencia de aproximações converge muito lentamente. Um pouco de matemática simples pode ajudar aqui. Os elementos da sequencia pode ser descritos como
+
+	the right answer + an error term involving h
+
+e isso pode ser demonstrado teoricamente que o erro é proporcional a uma potência de h, então ele fica menor quando h fica menor. Tomando a resposta certa como sendo A e o erro sendo B*h**n. Sendo que cada aproximação é calculada usando um valor de h duas vezes aquele usado no próximo, quaisquer duas aproximações consecutivas podem ser expressadas como
+
+		a(i) = A + B*(2**n)*(h**n)
+	and a(i+1) = A + B*(h**n)
+
+Agora o erro pode ser eliminado. Concluímos que 
+
+		a(i+1)*(2**n) - a(i)
+	A = --------------------
+			2**n - 1
+
