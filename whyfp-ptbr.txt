@@ -322,3 +322,51 @@ Agora o erro pode ser eliminado. Concluímos que
 	A = --------------------
 			2**n - 1
 
+É claro que, uma vez que o erro é aproximadamente uma potência de h essa conclusão é também aproximada, mas é uma aproximação muito melhor. Essa melhoria pode ser aplicada para todos os pares de aproximações subsequentes usando a função
+
+	elimerror n (cons a (cons b rest)) =
+		= cons ((b*(2**n)-a)/(2**n-1)) (elimerror n (cons b rest))
+
+Elimiando erros de uma sequencia de aproximações gera outra sequencia que converge muito mais rapidamente.
+Um problema resta antes que possamos usar elimerror - precisamos saber o valor correto de n. Isso é difícil de prever em geral, mas é fácil de medir. Não é difícil mostrar que a seguite função estima-o corretamente, mas não incluiremos a prova aqui.
+
+	order (cons a (cons b (cons c rest))) =
+		= round(log2( (a-c)/(b-c) - 1 ))
+	round x = x rounded to the nearest integer
+	log2 x = the logarithm of x to the base 2
+
+Agora, uma função genérica para aprimorar uma sequencia de aproximações pode ser definida:
+
+	improve s = elimerror (order s) s
+
+A derivada de uma função f pode ser calculada mais eficientemente usando improve, como a seguir
+
+	within eps (improve (differentiate h0 f x))
+
+Improve somente funciona em sequencia de aproximações que sejam calculadas usando o parametro h, que é divido por dois entre cada aproximação. Entretanto, se lhe for aplicado a uma sequencia qualquer o resulto é a mesma sequencia. Isso significa que uma sequencia de aproximações pode ser melhorada mais de uma vez. Um erro diferente é eliminado a cada vez e, as sequencias resultantes convergem cada vez mais rapidamente. Então, pode-se calcular uma derivada de maneira muito eficiente usando
+
+	within eps (improve (improve (improve (differentiate h0 f x))))
+
+Em termos de análise numérica, isso é como ter um método de quarta ordem e retorna um resultado preciso muito rapidamente. Pode-se até definir
+
+	super s = map second (repeat improve s)
+	second (cons a (cons b rest)) = b
+
+que usa repeat improve para obter uma sequencia de mais e mais sequencias melhoradas de aproximações e, constrói uma nova sequencia de aproximações tomando a segunda aproximação de cada uma das sequencias melhoradas (Ocorre que a segunda é o melhor para tomar - é mais precisa do que a primeira e não requer qualquer trabalho extra para computar). Esse algoritmo é muito sofisticado - ele usa um método numérico melhor e melhor à medida que mais e mais aproximações são calculadas. De fato, pode-se calcular derivadas com muita eficiência com o programa:
+
+	within eps (super (differentiate h0 f x))
+
+Esse é, provavelmente, um caso de usar uma marreta para abrir uma noz, mas o ponto é que mesmo um algoritmos tão sofisticado como super poder ser expressado facilmente quando modularizado usando avaliação preguiçosa.
+
+4.3 Integração numérica
+
+O último exemplo que discutiremos nessa sessão é integração numérica. O problema pode ser definido de maneira muito simples: dada uma função real f de um argumento real e dois pontos a e b, estimar a área sob a curva descrita por f entre esses dois pontos. A maneira mais simples de estimar a área é assumir que f é quase uma linha reta, nesse caso a área seria
+
+	easyintegrate f a b = (f a + f b)*(b-a)/2
+
+Infelizmente essa estimativa é provável que seja imprecisa a menos que a e b sejam próximos. Uma estimativa melhor pode ser feita pela divisão do intervalo de a a b em dois, estimando a área de cada metade e somando os resultados. Podemos definir uma sequencia de aproximações melhores para o valor da integral usando a fórmula descrita acima para a primeira aproximação e em seguida somando aproximações cada vez melhores para integrais de cada metade para o cálculo das demais. Essa sequencia é calculada pela função
+
+	integrate f a b = cons (easyintegrate f a b)
+						   (map addpair (zip (integrate f a mid)
+											 (integrate f mid b)))
+		where mid = (a+b)/2
