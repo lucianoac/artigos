@@ -2,3 +2,5 @@
 - O termo "fourth order method"
 - O termo "lazy evaluation"
 - Segundo parágrafo do item 4.3 - tradução confusa
+
+Teste
